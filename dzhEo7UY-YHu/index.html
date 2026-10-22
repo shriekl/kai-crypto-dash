@@ -1,0 +1,20 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Login</title>
+<style>body{font-family:system-ui;background:#111;color:#eee;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}form{width:90%;max-width:340px}input,button{width:100%;box-sizing:border-box;padding:14px;font-size:17px;margin:6px 0;border-radius:8px;border:1px solid #444;background:#222;color:#eee}button{background:#2a7;border:0}label{display:flex;gap:8px;align-items:center}label input{width:auto}#e{color:#f66}</style></head>
+<body><form id="f"><h3>🔒 Login</h3><input id="p" type="password" placeholder="Password" autocomplete="current-password"><label><input id="r" type="checkbox">Remember on this device</label><button>Unlock</button><div id="e"></div></form>
+<script>
+const u8=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),b64=a=>btoa(String.fromCharCode(...new Uint8Array(a)));
+const K='kd_key';
+async function get(n){return (await fetch(n+'?'+Date.now(),{cache:'no-store'})).json()}
+async function imp(raw){return crypto.subtle.importKey('raw',u8(raw),'AES-GCM',false,['decrypt'])}
+async function dec(key,o){return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:u8(o.iv)},key,u8(o.ct)))}
+async function derive(pw,o){const m=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);
+ return b64(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:u8(o.salt),iterations:o.iter},m,256))}
+async function open_(raw){const key=await imp(raw),app=await get('app.enc'),html=await dec(key,app);
+ window.__gd=async n=>JSON.parse(await dec(key,await get(n||'data.enc')));
+ const d=new DOMParser().parseFromString(html,'text/html');document.head.innerHTML=d.head.innerHTML;document.body.innerHTML=d.body.innerHTML;
+ for(const s of d.querySelectorAll('script')){const n=document.createElement('script');n.textContent=s.textContent;document.body.appendChild(n)}}
+(async()=>{const raw=sessionStorage.getItem(K)||localStorage.getItem(K);if(raw)try{await open_(raw)}catch(e){sessionStorage.removeItem(K);localStorage.removeItem(K)}})();
+document.getElementById('f').onsubmit=async ev=>{ev.preventDefault();const E=document.getElementById('e');E.textContent='Unlocking...';
+ try{const raw=await derive(document.getElementById('p').value,await get('app.enc'));await open_(raw);
+  sessionStorage.setItem(K,raw);if(document.getElementById('r').checked)localStorage.setItem(K,raw)}catch(e){E.textContent='Wrong password'}};
+</script></body></html>
